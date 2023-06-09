@@ -1,6 +1,8 @@
 import pyautogui as r
 import time
 import pyperclip as c
+from pynput import mouse as m
+from threading import Thread
 
 """
 Para ver en dónde está el x, y del mouse, y el color RGB de fondo:
@@ -47,3 +49,28 @@ def pn(posicion_referencia_x: int, posicion_referencia_y: int) -> tuple:
 
     # Calcular las coordenadas normalizadas y retornar
     return int(posicion_referencia[0] * escala_x), int(posicion_referencia[1] * escala_y)
+
+
+def on_click(x, y, button, pressed):
+    global mouse_x, mouse_y
+    if pressed:
+        mouse_x = x
+        mouse_y = y
+    else:
+        mouse_x = 0
+        # mouse_y = 0
+
+
+def take_screenshot(region):
+    global seq
+    nombre_archivo = 'recorder/' + str(seq).zfill(10) + '.png'
+    print(nombre_archivo)
+    r.screenshot(nombre_archivo)
+    seq += 1
+
+
+mouse_x = 0
+mouse_y = 0
+seq = 0
+mouse_listener = m.Listener(on_click=on_click)
+mouse_listener.start()
