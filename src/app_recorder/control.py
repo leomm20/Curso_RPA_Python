@@ -30,6 +30,7 @@ from threading import Thread
 import pyautogui
 
 from pynput import keyboard, mouse
+import pyperclip
 
 import settings
 
@@ -44,12 +45,14 @@ TMP_PATH = os.path.join(tempfile.gettempdir(),
                         "atbswp-" + date.today().strftime("%Y%m%d"))
 HEADER = (
     f"#!/bin/env python3\n"
+    f"# -*- coding: ISO-8859-1 -*-\n"
     f"# Created by atbswp v{settings.VERSION} "
     f"(https://git.sr.ht/~rmpr/atbswp)\n"
     f"# on {date.today().strftime('%d %b %Y ')}\n"
     f"import pyautogui\n"
+    f"import pyperclip\n"
     f"import time\n"
-    f"pyautogui.FAILSAFE = False\n"
+    f"# pyautogui.FAILSAFE = False\n"
 )
 
 LOOKUP_SPECIAL_KEY = {}
@@ -139,6 +142,9 @@ class RecordCtrl:
         LOOKUP_SPECIAL_KEY[keyboard.Key.cmd] = 'winleft'
         LOOKUP_SPECIAL_KEY[keyboard.Key.cmd_r] = 'winright'
         LOOKUP_SPECIAL_KEY[keyboard.Key.ctrl] = 'ctrlleft'
+        # LOOKUP_SPECIAL_KEY['\x03'] = 'ctrlleft'
+        # LOOKUP_SPECIAL_KEY['\x16'] = 'ctrlleft'
+        LOOKUP_SPECIAL_KEY[keyboard.Key.ctrl_l] = 'ctrlleft'
         LOOKUP_SPECIAL_KEY[keyboard.Key.ctrl_r] = 'ctrlright'
         LOOKUP_SPECIAL_KEY[keyboard.Key.delete] = 'delete'
         LOOKUP_SPECIAL_KEY[keyboard.Key.down] = 'down'
@@ -162,7 +168,8 @@ class RecordCtrl:
         LOOKUP_SPECIAL_KEY[keyboard.Key.page_down] = 'pagedown'
         LOOKUP_SPECIAL_KEY[keyboard.Key.page_up] = 'pageup'
         LOOKUP_SPECIAL_KEY[keyboard.Key.right] = 'right'
-        LOOKUP_SPECIAL_KEY[keyboard.Key.shift] = 'shift_left'
+        LOOKUP_SPECIAL_KEY[keyboard.Key.shift] = 'shift'
+        LOOKUP_SPECIAL_KEY[keyboard.Key.shift_l] = 'shift'
         LOOKUP_SPECIAL_KEY[keyboard.Key.shift_r] = 'shiftright'
         LOOKUP_SPECIAL_KEY[keyboard.Key.space] = 'space'
         LOOKUP_SPECIAL_KEY[keyboard.Key.tab] = 'tab'
@@ -208,11 +215,11 @@ class RecordCtrl:
         - key: The key pressed
         """
         suffix = "(" + repr(key) + ")"
-        if move == "keyDown":
-            # Corner case: Multiple successive keyDown
-            if move + suffix in self._capture[-1]:
-                move = 'press'
-                self._capture[-1] = engine + "." + move + suffix
+        # if move == "keyDown":
+        #     # Corner case: Multiple successive keyDown
+        #     if move + suffix in self._capture[-1]:
+        #         move = 'press'
+        #         self._capture[-1] = engine + "." + move + suffix
         self._capture.append(engine + "." + move + suffix)
 
     def on_move(self, x, y):
@@ -221,7 +228,7 @@ class RecordCtrl:
             return False
         b = time.perf_counter()
         timeout = float(b - self.last_time)
-        if timeout > 0.0:
+        if timeout > 1:
             self._capture.append(f"time.sleep({timeout})")
         self.last_time = b
         self.write_mouse_action(move="moveTo", parameters=f"{x}, {y}")
@@ -265,19 +272,26 @@ class RecordCtrl:
         """Triggered by a key press."""
         b = time.perf_counter()
         timeout = float(b - self.last_time)
-        if timeout > 0.0:
+        if timeout > 0.5:
             self._capture.append(f"time.sleep({timeout})")
         self.last_time = b
 
         try:
-            # Ignore presses on Fn key
-            if key.char:
+            if key.char == '\x03':
+                self._capture.append("pyautogui.hotkey('ctrl', 'c')")
+            elif key.char == '\x16':
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+            elif key.char == 'ñ':
+                self._capture.append("pyperclip.copy('ñ')")
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+            elif key.char == 'Ñ':
+                self._capture.append("pyperclip.copy('Ñ')")
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+            else:
                 self.write_keyboard_action(move='keyDown', key=key.char)
 
         except AttributeError:
-            self.write_keyboard_action(move="keyDown",
-                                       key=LOOKUP_SPECIAL_KEY.get(key,
-                                                                  self._error))
+            self.write_keyboard_action(move="keyDown", key=LOOKUP_SPECIAL_KEY.get(key, self._error))
 
     def on_release(self, key):
         """Triggered by a key released."""
@@ -287,9 +301,10 @@ class RecordCtrl:
             if len(str(key)) <= 3:
                 self.write_keyboard_action(move='keyUp', key=key)
             else:
-                self.write_keyboard_action(move="keyUp",
-                                           key=LOOKUP_SPECIAL_KEY.get(key,
-                                                                      self._error))
+                if hasattr(key, 'char') and (key.char == '\x03' or key.char == '\x16'):
+                    pass
+                else:
+                    self.write_keyboard_action(move="keyUp", key=LOOKUP_SPECIAL_KEY.get(key, self._error))
 
     def recording_timer(event):
         """Set the recording timer."""
@@ -327,7 +342,7 @@ class RecordCtrl:
         """Triggered when the recording button is clicked on the GUI."""
         self.mouse_sensibility = settings.CONFIG.getint("DEFAULT", "Mouse Speed")
         listener_mouse = mouse.Listener(
-            on_move=self.on_move,
+            # on_move=self.on_move,
             on_click=self.on_click,
             on_scroll=self.on_scroll)
         listener_keyboard = keyboard.Listener(
