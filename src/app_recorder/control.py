@@ -30,7 +30,8 @@ from threading import Thread
 import pyautogui
 
 from pynput import keyboard, mouse
-import pyperclip
+import win32api
+from pynput.keyboard import Key
 
 import settings
 
@@ -121,8 +122,16 @@ class RecordCtrl:
     mouse_sensibility -- granularity for mouse capture
     """
 
+
+    def caps_lock_activated(self):
+        return win32api.GetKeyState(0x14) & 0x01 != 0
+
+    def shift_activated(self):
+        return win32api.GetKeyState(0x10) & 0x80 != 0
+
     def __init__(self):
         """Initialize a new record."""
+        self.acento = False
         self._header = HEADER
         self._error = "### This key is not supported yet"
 
@@ -277,7 +286,29 @@ class RecordCtrl:
         self.last_time = b
 
         try:
-            if key.char == '\x03':
+            if key.char == '´':
+                self.acento = True
+            if self.acento and key.char in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
+                if (not self.caps_lock_activated() and not self.shift_activated()) \
+                        or (self.caps_lock_activated() and self.shift_activated()):
+                    print('min')
+                    match str(key.char).lower():
+                        case 'a': self._capture.append(f"pyperclip.copy('á')")
+                        case 'e': self._capture.append(f"pyperclip.copy('é')")
+                        case 'i': self._capture.append(f"pyperclip.copy('í')")
+                        case 'o': self._capture.append(f"pyperclip.copy('ó')")
+                        case 'u': self._capture.append(f"pyperclip.copy('ú')")
+                else:
+                    print('may')
+                    match str(key.char).lower():
+                        case 'a': self._capture.append(f"pyperclip.copy('Á')")
+                        case 'e': self._capture.append(f"pyperclip.copy('É')")
+                        case 'i': self._capture.append(f"pyperclip.copy('Í')")
+                        case 'o': self._capture.append(f"pyperclip.copy('Ó')")
+                        case 'u': self._capture.append(f"pyperclip.copy('Ú')")
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+                self.acento = False
+            elif key.char == '\x03':
                 self._capture.append("pyautogui.hotkey('ctrl', 'c')")
             elif key.char == '\x16':
                 self._capture.append("pyautogui.hotkey('ctrl', 'v')")
@@ -302,6 +333,8 @@ class RecordCtrl:
                 self.write_keyboard_action(move='keyUp', key=key)
             else:
                 if hasattr(key, 'char') and (key.char == '\x03' or key.char == '\x16'):
+                    pass
+                elif hasattr(key, 'char') and key.char == '´':
                     pass
                 else:
                     self.write_keyboard_action(move="keyUp", key=LOOKUP_SPECIAL_KEY.get(key, self._error))
