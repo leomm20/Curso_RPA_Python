@@ -31,7 +31,6 @@ import pyautogui
 
 from pynput import keyboard, mouse
 import win32api
-from pynput.keyboard import Key
 
 import settings
 
@@ -132,6 +131,7 @@ class RecordCtrl:
     def __init__(self):
         """Initialize a new record."""
         self.acento = False
+        self.dieresis = False
         self._header = HEADER
         self._error = "### This key is not supported yet"
 
@@ -288,10 +288,11 @@ class RecordCtrl:
         try:
             if key.char == '´':
                 self.acento = True
+            if key.char == '¨':
+                self.dieresis = True
             if self.acento and key.char in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
                 if (not self.caps_lock_activated() and not self.shift_activated()) \
                         or (self.caps_lock_activated() and self.shift_activated()):
-                    print('min')
                     match str(key.char).lower():
                         case 'a': self._capture.append(f"pyperclip.copy('á')")
                         case 'e': self._capture.append(f"pyperclip.copy('é')")
@@ -299,7 +300,6 @@ class RecordCtrl:
                         case 'o': self._capture.append(f"pyperclip.copy('ó')")
                         case 'u': self._capture.append(f"pyperclip.copy('ú')")
                 else:
-                    print('may')
                     match str(key.char).lower():
                         case 'a': self._capture.append(f"pyperclip.copy('Á')")
                         case 'e': self._capture.append(f"pyperclip.copy('É')")
@@ -308,6 +308,24 @@ class RecordCtrl:
                         case 'u': self._capture.append(f"pyperclip.copy('Ú')")
                 self._capture.append("pyautogui.hotkey('ctrl', 'v')")
                 self.acento = False
+            elif self.dieresis and key.char in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
+                if (not self.caps_lock_activated() and not self.shift_activated()) \
+                        or (self.caps_lock_activated() and self.shift_activated()):
+                    match str(key.char).lower():
+                        case 'a': self._capture.append(f"pyperclip.copy('ä')")
+                        case 'e': self._capture.append(f"pyperclip.copy('ë')")
+                        case 'i': self._capture.append(f"pyperclip.copy('ï')")
+                        case 'o': self._capture.append(f"pyperclip.copy('ö')")
+                        case 'u': self._capture.append(f"pyperclip.copy('ü')")
+                else:
+                    match str(key.char).lower():
+                        case 'a': self._capture.append(f"pyperclip.copy('Ä')")
+                        case 'e': self._capture.append(f"pyperclip.copy('Ë')")
+                        case 'i': self._capture.append(f"pyperclip.copy('Ï')")
+                        case 'o': self._capture.append(f"pyperclip.copy('Ö')")
+                        case 'u': self._capture.append(f"pyperclip.copy('Ü')")
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+                self.dieresis = False
             elif key.char == '\x03':
                 self._capture.append("pyautogui.hotkey('ctrl', 'c')")
             elif key.char == '\x16':
