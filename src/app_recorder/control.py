@@ -40,7 +40,6 @@ import wx
 import wx.adv
 import wx.lib.newevent as NE
 
-
 TMP_PATH = os.path.join(tempfile.gettempdir(),
                         "atbswp-" + date.today().strftime("%Y%m%d"))
 HEADER = (
@@ -103,7 +102,7 @@ class FileChooserCtrl:
                            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT) as fileDialog:
 
             if fileDialog.ShowModal() == wx.ID_CANCEL:
-                return     # the user changed their mind
+                return  # the user changed their mind
 
             # save the current contents in the file
             pathname = fileDialog.GetPath()
@@ -121,7 +120,6 @@ class RecordCtrl:
     mouse_sensibility -- granularity for mouse capture
     """
 
-
     def caps_lock_activated(self):
         return win32api.GetKeyState(0x14) & 0x01 != 0
 
@@ -130,8 +128,12 @@ class RecordCtrl:
 
     def __init__(self):
         """Initialize a new record."""
-        self.acento = False
+        self.tilde = False
         self.dieresis = False
+        self.ctrlleft = False
+        self.altright = False
+        self.circunflejo = False
+        self.tildeinv = False
         self._header = HEADER
         self._error = "### This key is not supported yet"
 
@@ -145,7 +147,8 @@ class RecordCtrl:
         LOOKUP_SPECIAL_KEY[keyboard.Key.alt] = 'alt'
         LOOKUP_SPECIAL_KEY[keyboard.Key.alt_l] = 'altleft'
         LOOKUP_SPECIAL_KEY[keyboard.Key.alt_r] = 'altright'
-        LOOKUP_SPECIAL_KEY[keyboard.Key.alt_gr] = 'altright'
+        # LOOKUP_SPECIAL_KEY[keyboard.Key.alt_gr] = 'altright'
+        LOOKUP_SPECIAL_KEY[keyboard.Key.alt_gr] = 'alt_gr'
         LOOKUP_SPECIAL_KEY[keyboard.Key.backspace] = 'backspace'
         LOOKUP_SPECIAL_KEY[keyboard.Key.caps_lock] = 'capslock'
         LOOKUP_SPECIAL_KEY[keyboard.Key.cmd] = 'winleft'
@@ -198,6 +201,7 @@ class RecordCtrl:
         move -- the mouse movement (mouseDown, mouseUp, scroll, moveTo)
         parameters -- the details of the movement
         """
+
         def isinteger(s):
             try:
                 int(s)
@@ -209,7 +213,7 @@ class RecordCtrl:
             coordinates = [int(s)
                            for s in parameters.split(", ") if isinteger(s)]
             if abs(coordinates[0] - self._lastx) < self.mouse_sensibility \
-               and abs(coordinates[1] - self._lasty) < self.mouse_sensibility:
+                    and abs(coordinates[1] - self._lasty) < self.mouse_sensibility:
                 return
             else:
                 self._lastx, self._lasty = coordinates
@@ -287,43 +291,73 @@ class RecordCtrl:
 
         try:
             if key.char == '´':
-                self.acento = True
+                self.tilde = True
             if key.char == '¨':
                 self.dieresis = True
-            if self.acento and key.char in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
+            if self.tilde and key.char not in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
+                if key.char != '´':
+                    self._capture.append(f"pyperclip.copy('´{key.char}')")
+                    self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+                    self.tilde = False
+            elif self.tilde and key.char in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
                 if (not self.caps_lock_activated() and not self.shift_activated()) \
                         or (self.caps_lock_activated() and self.shift_activated()):
                     match str(key.char).lower():
-                        case 'a': self._capture.append(f"pyperclip.copy('á')")
-                        case 'e': self._capture.append(f"pyperclip.copy('é')")
-                        case 'i': self._capture.append(f"pyperclip.copy('í')")
-                        case 'o': self._capture.append(f"pyperclip.copy('ó')")
-                        case 'u': self._capture.append(f"pyperclip.copy('ú')")
+                        case 'a':
+                            self._capture.append(f"pyperclip.copy('á')")
+                        case 'e':
+                            self._capture.append(f"pyperclip.copy('é')")
+                        case 'i':
+                            self._capture.append(f"pyperclip.copy('í')")
+                        case 'o':
+                            self._capture.append(f"pyperclip.copy('ó')")
+                        case 'u':
+                            self._capture.append(f"pyperclip.copy('ú')")
                 else:
                     match str(key.char).lower():
-                        case 'a': self._capture.append(f"pyperclip.copy('Á')")
-                        case 'e': self._capture.append(f"pyperclip.copy('É')")
-                        case 'i': self._capture.append(f"pyperclip.copy('Í')")
-                        case 'o': self._capture.append(f"pyperclip.copy('Ó')")
-                        case 'u': self._capture.append(f"pyperclip.copy('Ú')")
+                        case 'a':
+                            self._capture.append(f"pyperclip.copy('Á')")
+                        case 'e':
+                            self._capture.append(f"pyperclip.copy('É')")
+                        case 'i':
+                            self._capture.append(f"pyperclip.copy('Í')")
+                        case 'o':
+                            self._capture.append(f"pyperclip.copy('Ó')")
+                        case 'u':
+                            self._capture.append(f"pyperclip.copy('Ú')")
                 self._capture.append("pyautogui.hotkey('ctrl', 'v')")
-                self.acento = False
+                self.tilde = False
+            if self.dieresis and key.char not in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
+                if key.char != '¨':
+                    self._capture.append(f"pyperclip.copy('¨{key.char}')")
+                    self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+                    self.dieresis = False
             elif self.dieresis and key.char in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
                 if (not self.caps_lock_activated() and not self.shift_activated()) \
                         or (self.caps_lock_activated() and self.shift_activated()):
                     match str(key.char).lower():
-                        case 'a': self._capture.append(f"pyperclip.copy('ä')")
-                        case 'e': self._capture.append(f"pyperclip.copy('ë')")
-                        case 'i': self._capture.append(f"pyperclip.copy('ï')")
-                        case 'o': self._capture.append(f"pyperclip.copy('ö')")
-                        case 'u': self._capture.append(f"pyperclip.copy('ü')")
+                        case 'a':
+                            self._capture.append(f"pyperclip.copy('ä')")
+                        case 'e':
+                            self._capture.append(f"pyperclip.copy('ë')")
+                        case 'i':
+                            self._capture.append(f"pyperclip.copy('ï')")
+                        case 'o':
+                            self._capture.append(f"pyperclip.copy('ö')")
+                        case 'u':
+                            self._capture.append(f"pyperclip.copy('ü')")
                 else:
                     match str(key.char).lower():
-                        case 'a': self._capture.append(f"pyperclip.copy('Ä')")
-                        case 'e': self._capture.append(f"pyperclip.copy('Ë')")
-                        case 'i': self._capture.append(f"pyperclip.copy('Ï')")
-                        case 'o': self._capture.append(f"pyperclip.copy('Ö')")
-                        case 'u': self._capture.append(f"pyperclip.copy('Ü')")
+                        case 'a':
+                            self._capture.append(f"pyperclip.copy('Ä')")
+                        case 'e':
+                            self._capture.append(f"pyperclip.copy('Ë')")
+                        case 'i':
+                            self._capture.append(f"pyperclip.copy('Ï')")
+                        case 'o':
+                            self._capture.append(f"pyperclip.copy('Ö')")
+                        case 'u':
+                            self._capture.append(f"pyperclip.copy('Ü')")
                 self._capture.append("pyautogui.hotkey('ctrl', 'v')")
                 self.dieresis = False
             elif key.char == '\x03':
@@ -336,11 +370,71 @@ class RecordCtrl:
             elif key.char == 'Ñ':
                 self._capture.append("pyperclip.copy('Ñ')")
                 self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+            elif key.char == '°':
+                self._capture.append("pyperclip.copy('°')")
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+            elif key.char == '¡':
+                self._capture.append("pyperclip.copy('¡')")
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+            elif key.char == '|':
+                self._capture.append("pyperclip.copy('|')")
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+            elif key.char == '+':
+                self._capture.append("pyperclip.copy('+')")
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+            elif key.char == '{':
+                self._capture.append("pyperclip.copy('{')")
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+            elif key.char == '}':
+                self._capture.append("pyperclip.copy('}')")
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+            elif key.char == '<':
+                self._capture.append("pyperclip.copy('<')")
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+            elif key.char == '¿':
+                self._capture.append("pyperclip.copy('¿')")
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+            elif self.ctrlleft and self.altright:
+                self.ctrlleft = False
+                self.altright = False
+                self.on_release(keyboard.Key.ctrl_l)
+                self.on_release(keyboard.Key.alt_gr)
+                if key.char == '\\':
+                    self._capture.append(f"pyperclip.copy('\\\\')")
+                else:
+                    self._capture.append(f"pyperclip.copy('{key.char}')")
+                if key.char == '^':
+                    self.circunflejo = True
+                if key.char == '`':
+                    self.tildeinv = True
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
             else:
                 self.write_keyboard_action(move='keyDown', key=key.char)
 
         except AttributeError:
-            self.write_keyboard_action(move="keyDown", key=LOOKUP_SPECIAL_KEY.get(key, self._error))
+            if key == keyboard.Key.ctrl_l:
+                self.ctrlleft = True
+            elif key == keyboard.Key.alt_gr and self.ctrlleft:
+                self.altright = True
+            elif key == keyboard.Key.alt_gr and not self.ctrlleft:
+                self.ctrlleft = False
+                self.altright = False
+            elif key == keyboard.Key.space and self.circunflejo:
+                self.circunflejo = False
+            elif key == keyboard.Key.space and self.tildeinv:
+                self.tildeinv = False
+            elif key == keyboard.Key.space and self.tilde:
+                self._capture.append(f"pyperclip.copy('´')")
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+                self.tilde = False
+            elif self.dieresis and key == keyboard.Key.space and \
+                    (not self.caps_lock_activated() and not self.shift_activated()) \
+                    or (self.caps_lock_activated() and self.shift_activated()):
+                self._capture.append(f"pyperclip.copy('¨')")
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+                self.dieresis = False
+            else:
+                self.write_keyboard_action(move="keyDown", key=LOOKUP_SPECIAL_KEY.get(key, self._error))
 
     def on_release(self, key):
         """Triggered by a key released."""
@@ -354,6 +448,10 @@ class RecordCtrl:
                     pass
                 elif hasattr(key, 'char') and key.char == '´':
                     pass
+                elif hasattr(key, 'char') and key.char == '^':
+                    pass
+                elif hasattr(key, 'char') and key.char == '\\':
+                    self.write_keyboard_action(move="keyUp", key='\\')
                 else:
                     self.write_keyboard_action(move="keyUp", key=LOOKUP_SPECIAL_KEY.get(key, self._error))
 
@@ -534,7 +632,7 @@ class CompileCtrl:
                            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT) as fileDialog:
 
             if fileDialog.ShowModal() == wx.ID_CANCEL:
-                return     # the user changed their mind
+                return  # the user changed their mind
             pathname = fileDialog.GetPath()
             try:
                 shutil.copy(bytecode_path, pathname)
@@ -579,7 +677,7 @@ class SettingsCtrl:
         """Set the recording hotkey."""
         current_value = settings.CONFIG.getint('DEFAULT', 'Recording Hotkey')
         dialog = SliderDialog(None, title="Choose a function key: F2-12", size=(500, 50),
-                              default_value=current_value-339, min_value=2, max_value=12)
+                              default_value=current_value - 339, min_value=2, max_value=12)
         dialog.ShowModal()
         new_value = dialog.value + 339
         if new_value == settings.CONFIG.getint('DEFAULT', 'Playback Hotkey'):
@@ -595,7 +693,7 @@ class SettingsCtrl:
         """Set the playback hotkey."""
         current_value = settings.CONFIG.getint('DEFAULT', 'Playback Hotkey')
         dialog = SliderDialog(None, title="Choose a function key: F2-12", size=(500, 50),
-                              default_value=current_value-339, min_value=2, max_value=12)
+                              default_value=current_value - 339, min_value=2, max_value=12)
         dialog.ShowModal()
         new_value = dialog.value + 339
         if new_value == settings.CONFIG.getint('DEFAULT', 'Recording Hotkey'):
