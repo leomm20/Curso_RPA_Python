@@ -46,6 +46,7 @@ HEADER = (
     f"#!/bin/env python3\n"
     f"# -*- coding: ISO-8859-1 -*-\n"
     f"# Created by atbswp v{settings.VERSION} "
+    f"# Modified by Leonardo Maggiotti "
     f"(https://git.sr.ht/~rmpr/atbswp)\n"
     f"# on {date.today().strftime('%d %b %Y ')}\n"
     f"import pyautogui\n"
@@ -290,15 +291,22 @@ class RecordCtrl:
         self.last_time = b
 
         try:
-            if key.char == '´':
-                self.tilde = True
-            if key.char == '¨':
-                self.dieresis = True
             if self.tilde and key.char not in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
-                if key.char != '´':
-                    self._capture.append(f"pyperclip.copy('´{key.char}')")
-                    self._capture.append("pyautogui.hotkey('ctrl', 'v')")
-                    self.tilde = False
+                if (not self.caps_lock_activated() and not self.shift_activated()) \
+                        or (self.caps_lock_activated() and self.shift_activated()):
+                    if key.char in ('ñ', 'Ñ'):
+                        self._capture.append("pyperclip.copy('´ñ')")
+                    else:
+                        self._capture.append(f"pyperclip.copy('´{key.char}')")
+                else:
+                    if key.char in ('ñ', 'Ñ'):
+                        self._capture.append("pyperclip.copy('´Ñ')")
+                    elif str(key.char).isupper():
+                        self._capture.append(f"pyperclip.copy('´{str(key.char)}')")
+                    else:
+                        self._capture.append(f"pyperclip.copy('´{str(key.char).upper()}')")
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+                self.tilde = False
             elif self.tilde and key.char in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
                 if (not self.caps_lock_activated() and not self.shift_activated()) \
                         or (self.caps_lock_activated() and self.shift_activated()):
@@ -327,11 +335,22 @@ class RecordCtrl:
                             self._capture.append(f"pyperclip.copy('Ú')")
                 self._capture.append("pyautogui.hotkey('ctrl', 'v')")
                 self.tilde = False
-            if self.dieresis and key.char not in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
-                if key.char != '¨':
-                    self._capture.append(f"pyperclip.copy('¨{key.char}')")
-                    self._capture.append("pyautogui.hotkey('ctrl', 'v')")
-                    self.dieresis = False
+            elif self.dieresis and key.char not in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
+                if (not self.caps_lock_activated() and not self.shift_activated()) \
+                        or (self.caps_lock_activated() and self.shift_activated()):
+                    if key.char in ('ñ', 'Ñ'):
+                        self._capture.append("pyperclip.copy('¨ñ')")
+                    else:
+                        self._capture.append(f"pyperclip.copy('¨{key.char}')")
+                else:
+                    if key.char in ('ñ', 'Ñ'):
+                        self._capture.append("pyperclip.copy('¨Ñ')")
+                    elif str(key.char).isupper():
+                        self._capture.append(f"pyperclip.copy('¨{str(key.char)}')")
+                    else:
+                        self._capture.append(f"pyperclip.copy('¨{str(key.char).upper()}')")
+                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+                self.dieresis = False
             elif self.dieresis and key.char in ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']:
                 if (not self.caps_lock_activated() and not self.shift_activated()) \
                         or (self.caps_lock_activated() and self.shift_activated()):
@@ -364,11 +383,12 @@ class RecordCtrl:
                 self._capture.append("pyautogui.hotkey('ctrl', 'c')")
             elif key.char == '\x16':
                 self._capture.append("pyautogui.hotkey('ctrl', 'v')")
-            elif key.char == 'ñ':
-                self._capture.append("pyperclip.copy('ñ')")
-                self._capture.append("pyautogui.hotkey('ctrl', 'v')")
-            elif key.char == 'Ñ':
-                self._capture.append("pyperclip.copy('Ñ')")
+            elif key.char in ('ñ', 'Ñ'):
+                if (not self.caps_lock_activated() and not self.shift_activated()) \
+                        or (self.caps_lock_activated() and self.shift_activated()):
+                    self._capture.append("pyperclip.copy('ñ')")
+                else:
+                    self._capture.append("pyperclip.copy('Ñ')")
                 self._capture.append("pyautogui.hotkey('ctrl', 'v')")
             elif key.char == '°':
                 self._capture.append("pyperclip.copy('°')")
@@ -408,6 +428,10 @@ class RecordCtrl:
                 if key.char == '`':
                     self.tildeinv = True
                 self._capture.append("pyautogui.hotkey('ctrl', 'v')")
+            elif key.char == '´':
+                self.tilde = True
+            elif key.char == '¨':
+                self.dieresis = True
             else:
                 self.write_keyboard_action(move='keyDown', key=key.char)
 
@@ -423,13 +447,11 @@ class RecordCtrl:
                 self.circunflejo = False
             elif key == keyboard.Key.space and self.tildeinv:
                 self.tildeinv = False
-            elif key == keyboard.Key.space and self.tilde:
+            elif self.tilde and key == keyboard.Key.space:
                 self._capture.append(f"pyperclip.copy('´')")
                 self._capture.append("pyautogui.hotkey('ctrl', 'v')")
                 self.tilde = False
-            elif self.dieresis and key == keyboard.Key.space and \
-                    (not self.caps_lock_activated() and not self.shift_activated()) \
-                    or (self.caps_lock_activated() and self.shift_activated()):
+            elif self.dieresis and key == keyboard.Key.space:
                 self._capture.append(f"pyperclip.copy('¨')")
                 self._capture.append("pyautogui.hotkey('ctrl', 'v')")
                 self.dieresis = False
